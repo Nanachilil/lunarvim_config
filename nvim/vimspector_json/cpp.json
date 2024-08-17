@@ -1,0 +1,24 @@
+{
+  "adapters": {
+    "vscode-cpptools": {
+      "name": "cppdbg",
+      "command": [
+        "${gadgetDir}/vscode-cpptools/debugAdapters/bin/OpenDebugAD7"
+      ]
+    }
+  },
+  "configurations": {
+    "C++: Launch": {
+      "adapter": "vscode-cpptools",
+      "configuration": {
+        "request": "launch",
+        "program": "${fileDirname}/${fileBasenameNoExtension}",
+        "args": [],
+        "cwd": "${workspaceRoot}",
+        "environment": [],
+        "externalConsole": true,
+        "MIMode": "gdb"
+      }
+    }
+  }
+}
