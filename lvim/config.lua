@@ -181,7 +181,7 @@ vim.fn.sign_define('vimspectorPC', {text = '🔶', texthl = 'SpellBad'})
 
 -- 快捷键映射 
 vim.api.nvim_set_keymap('n', '<leader>vs', ':tabe .vimspector.json<CR>:LoadVimSpectorJsonTemplate<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader><Esc>', ':VimspectorReset<CR>', { noremap = true, silent = true })
+
 -- 定义一个 Lua 函数来读取模板
 function _G.read_template_into_buffer(template)
   local cmd = '0r /Users/nanachilil/.config/nvim/vimspector_json/' .. template
@@ -407,6 +407,7 @@ end
 
 -- 文件目录配置
 lvim.builtin.nvimtree.setup.view.side = "left"
+lvim.builtin.nvimtree.setup.view.width = 40
 lvim.builtin.nvimtree.setup.renderer.icons.show.git = false
 lvim.builtin.which_key.mappings["z"] = { copy_absolute_path, "Copy Absolute Path" }
 lvim.builtin.which_key.mappings["e"] = { "<cmd>NvimTreeToggle<CR>", "Explorer" }
