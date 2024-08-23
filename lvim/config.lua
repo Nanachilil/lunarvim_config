@@ -2,7 +2,7 @@
 -- Forum: https://www.reddit.com/r/lunarvim/
 local home = os.getenv("HOME")
 package.path = home .. "/.config/lvim/?.lua" -- $HOME/.config/lvim/*.lua
-
+package.path = home .. "/.config/lvim/plugins/?.lua" -- 添加专用插件文件到检索路径
 
 
 
@@ -181,7 +181,7 @@ vim.fn.sign_define('vimspectorPC', {text = '🔶', texthl = 'SpellBad'})
 
 -- 快捷键映射 
 vim.api.nvim_set_keymap('n', '<leader>vs', ':tabe .vimspector.json<CR>:LoadVimSpectorJsonTemplate<CR>', { noremap = true, silent = true })
-
+lvim.keys.normal_mode["<leader>esc"] = "<cmd>VimspectorReset<CR>"
 -- 定义一个 Lua 函数来读取模板
 function _G.read_template_into_buffer(template)
   local cmd = '0r /Users/nanachilil/.config/nvim/vimspector_json/' .. template
@@ -290,78 +290,137 @@ vim.api.nvim_set_keymap('n', '<leader>m', ':SymbolsOutline<CR>', { noremap = tru
 
 
 --==================== Treesitter ====================
--- 函数折叠
-require('nvim-treesitter.configs').setup {
-  ensure_installed = { "javascript", "python", "lua" },-- 安装所有维护的解析器
-  highlight = {
-    enable = true,                -- 启用高亮
-  },
-  indent = {
-    enable = true                 -- 启用缩进
-  },
-  fold = {
-    enable = true,                -- 启用折叠
-  },
-  incremental_selection = {
-    enable = true,
-  },
-  textobjects = {
-    select = {
-      enable = true,
-    },
-  },
-}
+
+-- markdown 高亮
+vim.list_extend(lvim.builtin.treesitter.ensure_installed, {
+  "c",
+  "cpp",
+  "lua",
+  "python",
+  "markdown",
+  "markdown_inline"
+})
+
+lvim.builtin.treesitter.highlight.additional_vim_regex_highlighting = { "markdown" }
 
 
--- 设置 skip_ts_context_commentstring_module 为 true
-vim.g.skip_ts_context_commentstring_module = true
-
--- 配置 ts_context_commentstring
-require('ts_context_commentstring').setup {
-  enable = true,
-}
-
--- 设置折叠方法和折叠表达式
-vim.opt.foldmethod = "expr"
-vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
-vim.opt.foldlevel = 99 -- 默认不折叠
-
--- 键映射设置
-lvim.keys.normal_mode["zR"] = "zR" -- 展开所有折叠
-lvim.keys.normal_mode["zM"] = "zM" -- 折叠所有代码
-lvim.keys.normal_mode["zr"] = "zr" -- 减少折叠级别
-lvim.keys.normal_mode["zm"] = "zm" -- 增加折叠级别
--- 以当前目录为根节点
-----------------------------------------------------------
+-- 设置折叠方法为 Treesitter
+vim.wo.foldmethod = 'expr'
+vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 
 
+-- 默认不折叠
+vim.opt.foldenable = false
+vim.opt.foldlevel = 99
 
+-- 确保 Treesitter 的折叠功能启用
+lvim.builtin.treesitter.fold = { enable = true }
 
+-- 自定义折叠文本
+vim.opt.foldtext = [[substitute(getline(v:foldstart),'\\t',repeat('\ ',&tabstop),'g').'...'.trim(getline(v:foldend)) . ' (' . (v:foldend - v:foldstart + 1) . ' lines)']]
 
+-- 设置折叠列宽度
+vim.opt.foldcolumn = "1"
 
+-- 键位映射
+lvim.keys.normal_mode["<CR>"] = "za"  -- 使用回车键切换折叠
 
---==================== nvim-navic ====================
--- 配置 nvim-navic 相关
--- 配置 nvim-navic
-local navic = require("nvim-navic")
+-- 可选：添加其他有用的折叠快捷键
+lvim.keys.normal_mode["zR"] = "zE"  -- 展开所有折叠
+lvim.keys.normal_mode["zM"] = "zW"  -- 关闭所有折叠
+lvim.keys.normal_mode["zr"] = "zr"  -- 打开一层折叠
+lvim.keys.normal_mode["zm"] = "zm"  -- 关闭一层折叠
 
-local on_attach = function(client, bufnr)
-  if client.server_capabilities.documentSymbolProvider then
-    navic.attach(client, bufnr)
+-- 自动命令：打开文件时记住上次的折叠状态
+vim.api.nvim_create_autocmd({"BufWinLeave"}, {
+  pattern = {"*.*"},
+  desc = "save view (folds), when closing file",
+  command = "mkview",
+})
+vim.api.nvim_create_autocmd({"BufWinEnter"}, {
+  pattern = {"*.*"},
+  desc = "load view (folds), when opening file",
+  command = "silent! loadview"
+})
+
+-- 为 Python 文件设置正确的折叠方法
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "python",
+  callback = function()
+    vim.opt_local.foldmethod = "expr"
+    vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"
+    print("Set foldmethod to expr for Python file")
   end
-end
+})
 
--- 配置语言服务器
-require'lspconfig'.clangd.setup {
-  on_attach = on_attach,
-  filetypes = {"c", "cpp", "objc", "objcpp"}, -- 指定文件类型
-}
+-- -- 更新诊断函数
+-- function diagnose_python_folding()
+--   print("Python Folding Diagnosis:")
+--   print("File type: " .. vim.bo.filetype)
+--   print("Fold method: " .. vim.wo.foldmethod)
+--   print("Fold expr: " .. vim.wo.foldexpr)
+--   
+--   local ts_ok, ts = pcall(require, "nvim-treesitter.parsers")
+--   if ts_ok then
+--     local lang = ts.get_buf_lang()
+--     print("Treesitter language: " .. lang)
+--     print("Has parser: " .. tostring(ts.has_parser(lang)))
+--   end
+--   
+--   local hl_ok, hl = pcall(require, "vim.treesitter.highlighter")
+--   if hl_ok then
+--     print("Highlighter active: " .. tostring(hl.active[vim.api.nvim_get_current_buf()] ~= nil))
+--   end
+--   
+--   vim.cmd("normal! zx")
+--   local fold_count = vim.fn.foldclosedend(1)
+--   print("Folds created: " .. tostring(fold_count ~= -1))
+--   
+--   -- 尝试手动创建折叠
+--   print("Attempting to manually create folds...")
+--   vim.cmd("silent! %foldclose!")
+--   fold_count = vim.fn.foldclosedend(1)
+--   print("Manual folds created: " .. tostring(fold_count ~= -1))
+-- end
 
-require'lspconfig'.pyright.setup {
-  on_attach = on_attach,
-  filetypes = {"python"}, -- 指定文件类型
-}
+-- vim.cmd("command! DiagnosePythonFolding lua diagnose_python_folding()")
 
+-- -- 添加一个命令来重置折叠设置
+-- vim.cmd([[
+--   command! ResetPythonFolding lua vim.opt_local.foldmethod = "expr"; vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"; print("Reset Python folding settings")
+-- ]])
+
+
+
+
+--==================== lspconfig ====================
+-- 跳转到下一个错误
+vim.keymap.set("n", "<leader>en", function()
+  vim.diagnostic.goto_next({severity = vim.diagnostic.severity.ERROR})
+end, { desc = "Next error" })
+
+-- 跳转到上一个错误
+vim.keymap.set("n", "<leader>ep", function()
+  vim.diagnostic.goto_prev({severity = vim.diagnostic.severity.ERROR})
+end, { desc = "Previous error" })
+
+-- 显示错误列表
+vim.keymap.set("n", "<leader>el", vim.diagnostic.setloclist, { desc = "Open diagnostics list" })
+
+-- 显示当前行的错误信息
+-- vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float, { desc = "Show line diagnostics" })
+
+
+
+
+---------------------------------------------------------
+
+
+
+
+
+
+-- ====================== 配色方案 ===================== 
 -- 自定义 gruvbox 配色方案
 -- vim.o.background = "light"  -- 或者 "light" 根据你的偏好
 vim.cmd("colorscheme gruvbox")
@@ -413,6 +472,8 @@ lvim.builtin.which_key.mappings["z"] = { copy_absolute_path, "Copy Absolute Path
 lvim.builtin.which_key.mappings["e"] = { "<cmd>NvimTreeToggle<CR>", "Explorer" }
 lvim.builtin.which_key.mappings["E"] = { change_root_to_current_file_dir, "Change Root to Current File Dir" }
 ---------------------------------------------------------
+
+
 
 
 
